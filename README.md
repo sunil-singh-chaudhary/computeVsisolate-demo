@@ -4,13 +4,39 @@ A new Flutter project.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+1. Compute Vs Isolate Flutter
 
-A few resources to get you started if this is your first Flutter project:
+class ComputeService {
+  Future<List<Model>> fetchUser() async {
+    String response =
+        await Api.getUser("https://jsonplaceholder.typicode.com/comments");
+    return await compute(deserializeJsons, response);
+  }
+  List<Model> deserializeJsons(String response) {
+    // return List<Model>.fromJson(jsonDecode(response));
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+    return List<Model>.from(
+        json.decode(response).map((x) => Model.fromJson(x)));
+  }
+}
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+2. ISOLATE
+
+class SpawnService {
+  Future<List<Model>> fetchUser() async {
+    ReceivePort port = ReceivePort();
+    String userData =
+        await Api.getUser("https://jsonplaceholder.typicode.com/comments");
+    await Isolate.spawn<List<dynamic>>(
+        deserializePerson, [port.sendPort, userData]);
+    return await port.first;
+  }
+
+  void deserializePerson(List<dynamic> values) {
+    SendPort sendPort = values[0];
+    String response = values[1];
+
+    sendPort.send(
+        List<Model>.from(json.decode(response).map((x) => Model.fromJson(x))));
+  }
+}
